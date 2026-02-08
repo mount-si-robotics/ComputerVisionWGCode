@@ -20,7 +20,7 @@ public class Limelight extends OpMode {
     @Override
     public void init() {
         imu = hardwareMap.get(IMU.class, "imu");
-        imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(RevHubOrientationOnRobot.LogoFacingDirection.BACKWARD, RevHubOrientationOnRobot.UsbFacingDirection.LEFT)));
+        imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(RevHubOrientationOnRobot.LogoFacingDirection.UP, RevHubOrientationOnRobot.UsbFacingDirection.RIGHT)));
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
 
