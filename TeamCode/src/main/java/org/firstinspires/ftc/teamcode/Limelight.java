@@ -39,7 +39,7 @@ public class Limelight extends OpMode {
     private LLResult _latestResult;
     private LLResult _greenResult;
     private LLResult _purpleResult;
-    private int targetPipeline;
+    private int targetPipeline = 2;
 
     @Override
     public void loop() {
@@ -47,6 +47,7 @@ public class Limelight extends OpMode {
         limelight.updateRobotOrientation(orientation.getYaw(AngleUnit.DEGREES));
 
         _latestResult = limelight.getLatestResult();
+
         if (_latestResult != null && _latestResult.getPipelineIndex() == targetPipeline) {
             if (_latestResult.getPipelineIndex() == 2) _purpleResult = _latestResult;
             else _greenResult = _latestResult;
@@ -55,7 +56,7 @@ public class Limelight extends OpMode {
             _latestResult = null;
         }
 
-        if (_greenResult == null || _purpleResult == null) { // this is always true for some reason
+        if (_greenResult == null || _purpleResult == null) {
             telemetry.addLine("No Results");
             telemetry.update();
             return;
