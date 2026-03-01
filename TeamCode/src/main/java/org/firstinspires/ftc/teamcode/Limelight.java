@@ -6,19 +6,36 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 import java.util.List;
 
 @TeleOp(name = "Limelight")
 public class Limelight extends OpMode {
+    enum Artifact {
+        PURPLE(2),
+        GREEN(3);
+
+        private final int pipeline;
+        Artifact(int pipeline) {
+            this.pipeline = pipeline;
+        }
+
+        public int getPipeline() {
+            return pipeline;
+        }
+    }
+
     IMU imu;
     Limelight3A limelight;
     double tx;
+
+    DcMotorEx frontLeft, frontRight, backLeft, backRight;
 
     @Override
     public void init() {
@@ -26,6 +43,21 @@ public class Limelight extends OpMode {
         imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(RevHubOrientationOnRobot.LogoFacingDirection.UP, RevHubOrientationOnRobot.UsbFacingDirection.RIGHT)));
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
+
+        frontLeft = hardwareMap.get(DcMotorEx.class, "frontLeft");
+        backLeft = hardwareMap.get(DcMotorEx.class,  "backLeft");
+        backRight = hardwareMap.get(DcMotorEx.class,   "backRight");
+        frontRight = hardwareMap.get(DcMotorEx.class, "frontRight");
+
+        frontLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         telemetry.setMsTransmissionInterval(11);
         limelight.pipelineSwitch(2);
@@ -39,20 +71,24 @@ public class Limelight extends OpMode {
     private LLResult _latestResult;
     private LLResult _greenResult;
     private LLResult _purpleResult;
-    private int targetPipeline = 2;
+    private Artifact targetArtifactPipeline = Artifact.PURPLE;
+
+    private Artifact _targetArtifact = Artifact.PURPLE;
+    private int _targetArtifactIndex = 0;
 
     @Override
     public void loop() {
         YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
         limelight.updateRobotOrientation(orientation.getYaw(AngleUnit.DEGREES));
+        telemetry.addData("Robot Yaw", orientation.getYaw());
 
         _latestResult = limelight.getLatestResult();
 
-        if (_latestResult != null && _latestResult.getPipelineIndex() == targetPipeline) {
+        if (_latestResult != null && _latestResult.getPipelineIndex() == targetArtifactPipeline.pipeline) {
             if (_latestResult.getPipelineIndex() == 2) _purpleResult = _latestResult;
             else _greenResult = _latestResult;
-            targetPipeline = _latestResult.getPipelineIndex() == 2 ? 3 : 2;
-            limelight.pipelineSwitch(targetPipeline);
+            targetArtifactPipeline = _latestResult.getPipelineIndex() == 2 ? Artifact.GREEN : Artifact.PURPLE;
+            limelight.pipelineSwitch(targetArtifactPipeline.pipeline);
             _latestResult = null;
         }
 
@@ -72,7 +108,20 @@ public class Limelight extends OpMode {
             List<LLResultTypes.ColorResult> purpleResults = _purpleResult.getColorResults();
             int purpleAmount = purpleResults.size();
             telemetry.addData("Purple Amount", purpleAmount);
-        } else telemetry.addData("Purple Amount", "INVALID");
+
+            double targetOffset = _purpleResult.getColorResults().get(_targetArtifactIndex).getTargetXDegrees();
+            double rotationalPower = getRotationalPower(targetOffset);
+
+            telemetry.addData("Target Offset", targetOffset);
+            telemetry.addData("Rotational Power", rotationalPower);
+        } else {
+            telemetry.addData("Purple Amount", "INVALID");
+
+            frontLeft.setVelocity(0);
+            frontRight.setVelocity(0);
+            backRight.setVelocity(0);
+            backLeft.setVelocity(0);
+        };
 
 //            tx = result.getTx();
 //                telemetry.addData("tx", result.getTx());
@@ -80,5 +129,21 @@ public class Limelight extends OpMode {
 //                telemetry.addData("Purple Amount", purpleAmount);
 
         telemetry.update();
+    }
+
+    private final double _maxRotationalError = 1;
+
+    private double getRotationalPower(double targetAngle){
+        double rotationPower = 0.0;
+        double angleError = getNormalizedAngle(targetAngle);
+        if (Math.abs(angleError) > _maxRotationalError) {
+            rotationPower = Math.max(-1.0, Math.min(-angleError / 45.0, 1.0));
+        }
+
+        return rotationPower;
+    }
+
+    private double getNormalizedAngle(double rawError) {
+        return (rawError + 180) % 360 - 180;
     }
 }
