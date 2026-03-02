@@ -17,6 +17,8 @@ import java.util.List;
 
 @TeleOp(name = "Limelight")
 public class Limelight extends OpMode {
+    private final double turnVelocity = 2000;
+
     enum Artifact {
         PURPLE(2),
         GREEN(3);
@@ -114,6 +116,11 @@ public class Limelight extends OpMode {
 
             telemetry.addData("Target Offset", targetOffset);
             telemetry.addData("Rotational Power", rotationalPower);
+
+            frontLeft.setVelocity(rotationalPower * turnVelocity);
+            frontRight.setVelocity(rotationalPower * turnVelocity);
+            backLeft.setVelocity(-rotationalPower * turnVelocity);
+            backRight.setVelocity(-rotationalPower * turnVelocity);
         } else {
             telemetry.addData("Purple Amount", "INVALID");
 
@@ -140,7 +147,7 @@ public class Limelight extends OpMode {
             rotationPower = Math.max(-1.0, Math.min(-angleError / 45.0, 1.0));
         }
 
-        return rotationPower;
+        return -rotationPower;
     }
 
     private double getNormalizedAngle(double rawError) {
