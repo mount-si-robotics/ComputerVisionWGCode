@@ -17,7 +17,7 @@ import java.util.List;
 
 @TeleOp(name = "Limelight")
 public class Limelight extends OpMode {
-    private final double turnVelocity = 2000;
+    private final double velocity = 2000;
 
     enum Artifact {
         PURPLE(2),
@@ -76,6 +76,7 @@ public class Limelight extends OpMode {
     private Artifact targetArtifactPipeline = Artifact.PURPLE;
     private Artifact _targetArtifact = Artifact.PURPLE;
     private int _targetArtifactIndex = 0;
+    private String state = "Not Moving";
 
     @Override
     public void loop() {
@@ -102,59 +103,82 @@ public class Limelight extends OpMode {
         if(gamepad1.aWasPressed()) _targetArtifact = _targetArtifact == Artifact.PURPLE ? Artifact.GREEN : Artifact.PURPLE;
         telemetry.addData("Target Artifact", _targetArtifact);
 
-            if (_greenResult.isValid()) {
-                List<LLResultTypes.ColorResult> greenResults = _greenResult.getColorResults();
-                int greenAmount = greenResults.size();
-                telemetry.addData("Green Amount", greenAmount);
+//        if (_greenResult.isValid()) {
+//            List<LLResultTypes.ColorResult> greenResults = _greenResult.getColorResults();
+//            int greenAmount = greenResults.size();
+//            telemetry.addData("Green Amount", greenAmount);
+//
+//            if(_targetArtifact == Artifact.GREEN) {
+//                double targetOffset = _greenResult.getColorResults().get(_targetArtifactIndex).getTargetXDegrees();
+//                double rotationalPower = getRotationalPower(targetOffset);
+//
+//                telemetry.addData("Target Offset", targetOffset);
+//                telemetry.addData("Rotational Power", rotationalPower);
+//
+//                frontLeft.setVelocity(-rotationalPower * velocity);
+//                frontRight.setVelocity(rotationalPower * velocity);
+//                backLeft.setVelocity(-rotationalPower * velocity);
+//                backRight.setVelocity(rotationalPower * velocity);
+//            }
+//        } else {
+//            telemetry.addData("Green Amount", "INVALID");
+//            if(_targetArtifact == Artifact.GREEN) {
+//                frontLeft.setVelocity(0);
+//                frontRight.setVelocity(0);
+//                backRight.setVelocity(0);
+//                backLeft.setVelocity(0);
+//            }
+//        }
 
-                if(_targetArtifact == Artifact.GREEN) {
-                    double targetOffset = _greenResult.getColorResults().get(_targetArtifactIndex).getTargetXDegrees();
-                    double rotationalPower = getRotationalPower(targetOffset);
+        _purpleResult.getColorResults().get(_targetArtifactIndex);
 
-                    telemetry.addData("Target Offset", targetOffset);
-                    telemetry.addData("Rotational Power", rotationalPower);
+        if (_purpleResult.isValid()) {
+            List<LLResultTypes.ColorResult> purpleResults = _purpleResult.getColorResults();
+            int purpleAmount = purpleResults.size();
+            telemetry.addData("Purple Amount", purpleAmount);
 
-                    frontLeft.setVelocity(-rotationalPower * turnVelocity);
-                    frontRight.setVelocity(rotationalPower * turnVelocity);
-                    backLeft.setVelocity(-rotationalPower * turnVelocity);
-                    backRight.setVelocity(rotationalPower * turnVelocity);
+            if(_targetArtifact == Artifact.PURPLE) {
+                state = "Rotate";
+                LLResultTypes.ColorResult target = _purpleResult.getColorResults().get(_targetArtifactIndex);
+                double targetOffset = target.getTargetXDegrees();
+                double rotationalPower = getRotationalPower(targetOffset);
+
+                telemetry.addData("Target Offset", targetOffset);
+
+                if(targetOffset < 1 && targetOffset > -1) state = "Forward";
+                if(target.getTargetArea() >= 60) state = "Not Moving";
+                telemetry.addData("State", state);
+
+                switch(state) {
+                    case "Not Moving":
+                        frontLeft.setVelocity(0);
+                        frontRight.setVelocity(0);
+                        backLeft.setVelocity(0);
+                        backRight.setVelocity(0);
+                    case "Rotate":
+                        telemetry.addData("Rotational Power", rotationalPower);
+                        frontLeft.setVelocity(-rotationalPower * velocity);
+                        frontRight.setVelocity(rotationalPower * velocity);
+                        backLeft.setVelocity(-rotationalPower * velocity);
+                        backRight.setVelocity(rotationalPower * velocity);
+                    case "Forward":
+                        frontLeft.setVelocity(velocity);
+                        frontRight.setVelocity(velocity);
+                        backLeft.setVelocity(velocity);
+                        backRight.setVelocity(velocity);
                 }
-            } else {
-                telemetry.addData("Green Amount", "INVALID");
-                if(_targetArtifact == Artifact.GREEN) {
-                    frontLeft.setVelocity(0);
-                    frontRight.setVelocity(0);
-                    backRight.setVelocity(0);
-                    backLeft.setVelocity(0);
-                }
+
             }
-
-            if (_purpleResult.isValid()) {
-                List<LLResultTypes.ColorResult> purpleResults = _purpleResult.getColorResults();
-                int purpleAmount = purpleResults.size();
-                telemetry.addData("Purple Amount", purpleAmount);
-
-                if(_targetArtifact == Artifact.PURPLE) {
-                    double targetOffset = _purpleResult.getColorResults().get(_targetArtifactIndex).getTargetXDegrees();
-                    double rotationalPower = getRotationalPower(targetOffset);
-
-                    telemetry.addData("Target Offset", targetOffset);
-                    telemetry.addData("Rotational Power", rotationalPower);
-
-                    frontLeft.setVelocity(-rotationalPower * turnVelocity);
-                    frontRight.setVelocity(rotationalPower * turnVelocity);
-                    backLeft.setVelocity(-rotationalPower * turnVelocity);
-                    backRight.setVelocity(rotationalPower * turnVelocity);
-                }
-            } else {
-                telemetry.addData("Purple Amount", "INVALID");
-                if(_targetArtifact == Artifact.PURPLE) {
-                    frontLeft.setVelocity(0);
-                    frontRight.setVelocity(0);
-                    backRight.setVelocity(0);
-                    backLeft.setVelocity(0);
-                }
+        } else {
+            telemetry.addData("Purple Amount", "INVALID");
+            state = "Not Moving";
+            if(_targetArtifact == Artifact.PURPLE) {
+                frontLeft.setVelocity(0);
+                frontRight.setVelocity(0);
+                backRight.setVelocity(0);
+                backLeft.setVelocity(0);
             }
+        }
 
         telemetry.update();
     }
