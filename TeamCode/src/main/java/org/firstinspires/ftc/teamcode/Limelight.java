@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -17,7 +18,7 @@ import java.util.List;
 
 @TeleOp(name = "Limelight")
 public class Limelight extends OpMode {
-    private final double velocity = 2000;
+    private final double VELOCITY_CONSTANT = 250;
 
     enum Artifact {
         PURPLE(2),
@@ -47,7 +48,7 @@ public class Limelight extends OpMode {
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
 
         frontLeft = hardwareMap.get(DcMotorEx.class, "frontLeft");
-        backLeft = hardwareMap.get(DcMotorEx.class,  "backLeft");
+        backLeft  = hardwareMap.get(DcMotorEx.class,  "backLeft");
         backRight = hardwareMap.get(DcMotorEx.class,   "backRight");
         frontRight = hardwareMap.get(DcMotorEx.class, "frontRight");
 
@@ -55,6 +56,11 @@ public class Limelight extends OpMode {
         frontRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        backRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
         frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -130,7 +136,7 @@ public class Limelight extends OpMode {
 //            }
 //        }
 
-        _purpleResult.getColorResults().get(_targetArtifactIndex);
+//        _purpleResult.getColorResults().get(_targetArtifactIndex);
 
         if (_purpleResult.isValid()) {
             List<LLResultTypes.ColorResult> purpleResults = _purpleResult.getColorResults();
@@ -145,8 +151,8 @@ public class Limelight extends OpMode {
 
                 telemetry.addData("Target Offset", targetOffset);
 
-                if(targetOffset < 1 && targetOffset > -1) state = "Forward";
-                if(target.getTargetArea() >= 60) state = "Not Moving";
+//                if(targetOffset < 1 && targetOffset > -1) state = "Forward";
+                if(target.getTargetArea() >= 10) state = "Not Moving";
                 telemetry.addData("State", state);
 
                 switch(state) {
@@ -155,17 +161,21 @@ public class Limelight extends OpMode {
                         frontRight.setVelocity(0);
                         backLeft.setVelocity(0);
                         backRight.setVelocity(0);
+                        break;
                     case "Rotate":
+                        double inverseArea = 1/target.getTargetArea();
                         telemetry.addData("Rotational Power", rotationalPower);
-                        frontLeft.setVelocity(-rotationalPower * velocity);
-                        frontRight.setVelocity(rotationalPower * velocity);
-                        backLeft.setVelocity(-rotationalPower * velocity);
-                        backRight.setVelocity(rotationalPower * velocity);
+                        frontLeft.setVelocity((inverseArea + rotationalPower) * VELOCITY_CONSTANT);
+                        frontRight.setVelocity((inverseArea - rotationalPower) * VELOCITY_CONSTANT);
+                        backLeft.setVelocity((inverseArea + rotationalPower) * VELOCITY_CONSTANT);
+                        backRight.setVelocity((inverseArea - rotationalPower) * VELOCITY_CONSTANT);
+                        break;
                     case "Forward":
-                        frontLeft.setVelocity(velocity);
-                        frontRight.setVelocity(velocity);
-                        backLeft.setVelocity(velocity);
-                        backRight.setVelocity(velocity);
+                        frontLeft.setVelocity(VELOCITY_CONSTANT);
+                        frontRight.setVelocity(VELOCITY_CONSTANT);
+                        backLeft.setVelocity(VELOCITY_CONSTANT);
+                        backRight.setVelocity(VELOCITY_CONSTANT);
+                        break;
                 }
 
             }
