@@ -18,8 +18,8 @@ import java.util.List;
 
 @TeleOp(name = "Limelight")
 public class Limelight extends OpMode {
-    private final double VELOCITY_CONSTANT = 600;
-    private final double TARGET_AREA = 0.5;
+    private final double VELOCITY_CONSTANT = 750;
+    private final double TARGET_AREA = 0.35;
     private final double TURNING_DAMPING = 25;
 
     enum Artifact {
@@ -84,7 +84,7 @@ public class Limelight extends OpMode {
     private Artifact targetArtifactPipeline = Artifact.PURPLE;
     private Artifact _targetArtifact = Artifact.PURPLE;
     private int _targetArtifactIndex = 0;
-    private String state = "Not Moving";
+//    private String state = "Not Moving";
 
     @Override
     public void loop() {
@@ -111,34 +111,24 @@ public class Limelight extends OpMode {
         if(gamepad1.aWasPressed()) _targetArtifact = _targetArtifact == Artifact.PURPLE ? Artifact.GREEN : Artifact.PURPLE;
         telemetry.addData("Target Artifact", _targetArtifact);
 
-//        if (_greenResult.isValid()) {
-//            List<LLResultTypes.ColorResult> greenResults = _greenResult.getColorResults();
-//            int greenAmount = greenResults.size();
-//            telemetry.addData("Green Amount", greenAmount);
-//
-//            if(_targetArtifact == Artifact.GREEN) {
-//                double targetOffset = _greenResult.getColorResults().get(_targetArtifactIndex).getTargetXDegrees();
-//                double rotationalPower = getRotationalPower(targetOffset);
-//
-//                telemetry.addData("Target Offset", targetOffset);
-//                telemetry.addData("Rotational Power", rotationalPower);
-//
-//                frontLeft.setVelocity(-rotationalPower * velocity);
-//                frontRight.setVelocity(rotationalPower * velocity);
-//                backLeft.setVelocity(-rotationalPower * velocity);
-//                backRight.setVelocity(rotationalPower * velocity);
-//            }
-//        } else {
-//            telemetry.addData("Green Amount", "INVALID");
-//            if(_targetArtifact == Artifact.GREEN) {
-//                frontLeft.setVelocity(0);
-//                frontRight.setVelocity(0);
-//                backRight.setVelocity(0);
-//                backLeft.setVelocity(0);
-//            }
-//        }
+        if (_greenResult.isValid()) {
+            List<LLResultTypes.ColorResult> greenResults = _greenResult.getColorResults();
+            int greenAmount = greenResults.size();
+            telemetry.addData("Green Amount", greenAmount);
 
-//        _purpleResult.getColorResults().get(_targetArtifactIndex);
+            if(_targetArtifact == Artifact.GREEN) {
+                LLResultTypes.ColorResult target = _greenResult.getColorResults().get(_targetArtifactIndex);
+                moveRobot(target);
+            }
+        } else {
+            telemetry.addData("Green Amount", "INVALID");
+            if(_targetArtifact == Artifact.GREEN) {
+                frontLeft.setVelocity(0);
+                frontRight.setVelocity(0);
+                backRight.setVelocity(0);
+                backLeft.setVelocity(0);
+            }
+        }
 
         if (_purpleResult.isValid()) {
             List<LLResultTypes.ColorResult> purpleResults = _purpleResult.getColorResults();
@@ -146,40 +136,11 @@ public class Limelight extends OpMode {
             telemetry.addData("Purple Amount", purpleAmount);
 
             if(_targetArtifact == Artifact.PURPLE) {
-                state = "Moving";
                 LLResultTypes.ColorResult target = _purpleResult.getColorResults().get(_targetArtifactIndex);
-                double targetOffset = target.getTargetXDegrees();
-                double rotationalPower = getRotationalPower(targetOffset);
-                double inverseArea = 1 / ((target.getTargetArea()) * 100);
-
-                telemetry.addData("Target Offset", targetOffset);
-
-                if (target.getTargetArea() >= TARGET_AREA) inverseArea = 0;
-
-                telemetry.addData("State", state);
-                telemetry.addData("Target Area", target.getTargetArea());
-                telemetry.addData("Inverse Area", inverseArea);
-
-                switch(state) {
-                    case "Not Moving":
-                        frontLeft.setVelocity(0);
-                        frontRight.setVelocity(0);
-                        backLeft.setVelocity(0);
-                        backRight.setVelocity(0);
-                        break;
-                    case "Moving":
-                        telemetry.addData("Rotational Power", rotationalPower);
-                        frontLeft.setVelocity((inverseArea + rotationalPower) * VELOCITY_CONSTANT);
-                        frontRight.setVelocity((inverseArea - rotationalPower) * VELOCITY_CONSTANT);
-                        backLeft.setVelocity((inverseArea + rotationalPower) * VELOCITY_CONSTANT);
-                        backRight.setVelocity((inverseArea - rotationalPower) * VELOCITY_CONSTANT);
-                        break;
-                }
-
+                moveRobot(target);
             }
         } else {
             telemetry.addData("Purple Amount", "INVALID");
-            state = "Not Moving";
             if(_targetArtifact == Artifact.PURPLE) {
                 frontLeft.setVelocity(0);
                 frontRight.setVelocity(0);
@@ -189,6 +150,32 @@ public class Limelight extends OpMode {
         }
 
         telemetry.update();
+    }
+
+    private void moveRobot(LLResultTypes.ColorResult target) {
+        double targetOffset = target.getTargetXDegrees();
+        double rotationalPower = getRotationalPower(targetOffset);
+        double inverseArea = 2 / ((target.getTargetArea()) * 100);
+
+        telemetry.addData("Target Offset", targetOffset);
+
+        if (target.getTargetArea() >= TARGET_AREA) inverseArea = 0;
+
+        if (inverseArea == 0 && rotationalPower == 0) {
+             frontLeft.setVelocity(0);
+             frontRight.setVelocity(0);
+             backLeft.setVelocity(0);
+             backRight.setVelocity(0);
+        }
+
+        telemetry.addData("Target Area", target.getTargetArea());
+        telemetry.addData("Inverse Area", inverseArea);
+
+        telemetry.addData("Rotational Power", rotationalPower);
+        frontLeft.setVelocity((inverseArea + rotationalPower) * VELOCITY_CONSTANT);
+        frontRight.setVelocity((inverseArea - rotationalPower) * VELOCITY_CONSTANT);
+        backLeft.setVelocity((inverseArea + rotationalPower) * VELOCITY_CONSTANT);
+        backRight.setVelocity((inverseArea - rotationalPower) * VELOCITY_CONSTANT);
     }
 
     private final double _maxRotationalError = 1;
