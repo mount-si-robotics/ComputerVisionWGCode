@@ -18,7 +18,9 @@ import java.util.List;
 
 @TeleOp(name = "Limelight")
 public class Limelight extends OpMode {
-    private final double VELOCITY_CONSTANT = 250;
+    private final double VELOCITY_CONSTANT = 600;
+    private final double TARGET_AREA = 0.5;
+    private final double TURNING_DAMPING = 25;
 
     enum Artifact {
         PURPLE(2),
@@ -144,16 +146,19 @@ public class Limelight extends OpMode {
             telemetry.addData("Purple Amount", purpleAmount);
 
             if(_targetArtifact == Artifact.PURPLE) {
-                state = "Rotate";
+                state = "Moving";
                 LLResultTypes.ColorResult target = _purpleResult.getColorResults().get(_targetArtifactIndex);
                 double targetOffset = target.getTargetXDegrees();
                 double rotationalPower = getRotationalPower(targetOffset);
+                double inverseArea = 1 / ((target.getTargetArea()) * 100);
 
                 telemetry.addData("Target Offset", targetOffset);
 
-//                if(targetOffset < 1 && targetOffset > -1) state = "Forward";
-                if(target.getTargetArea() >= 10) state = "Not Moving";
+                if (target.getTargetArea() >= TARGET_AREA) inverseArea = 0;
+
                 telemetry.addData("State", state);
+                telemetry.addData("Target Area", target.getTargetArea());
+                telemetry.addData("Inverse Area", inverseArea);
 
                 switch(state) {
                     case "Not Moving":
@@ -162,19 +167,12 @@ public class Limelight extends OpMode {
                         backLeft.setVelocity(0);
                         backRight.setVelocity(0);
                         break;
-                    case "Rotate":
-                        double inverseArea = 1/target.getTargetArea();
+                    case "Moving":
                         telemetry.addData("Rotational Power", rotationalPower);
                         frontLeft.setVelocity((inverseArea + rotationalPower) * VELOCITY_CONSTANT);
                         frontRight.setVelocity((inverseArea - rotationalPower) * VELOCITY_CONSTANT);
                         backLeft.setVelocity((inverseArea + rotationalPower) * VELOCITY_CONSTANT);
                         backRight.setVelocity((inverseArea - rotationalPower) * VELOCITY_CONSTANT);
-                        break;
-                    case "Forward":
-                        frontLeft.setVelocity(VELOCITY_CONSTANT);
-                        frontRight.setVelocity(VELOCITY_CONSTANT);
-                        backLeft.setVelocity(VELOCITY_CONSTANT);
-                        backRight.setVelocity(VELOCITY_CONSTANT);
                         break;
                 }
 
@@ -199,7 +197,7 @@ public class Limelight extends OpMode {
         double rotationPower = 0.0;
         double angleError = getNormalizedAngle(targetAngle);
         if (Math.abs(angleError) > _maxRotationalError) {
-            rotationPower = Math.max(-1.0, Math.min(-angleError / 45.0, 1.0));
+            rotationPower = Math.max(-1.0, Math.min(-angleError / TURNING_DAMPING, 1.0));
         }
 
         return -rotationPower;
