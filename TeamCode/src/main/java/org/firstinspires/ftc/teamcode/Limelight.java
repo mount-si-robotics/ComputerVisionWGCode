@@ -21,6 +21,7 @@ public class Limelight extends OpMode {
     private final double VELOCITY_CONSTANT = 750;
     private final double TARGET_AREA = 0.35;
     private final double TURNING_DAMPING = 25;
+    private final double EDGE = 18;
 
     enum Artifact {
         PURPLE(2),
@@ -159,7 +160,7 @@ public class Limelight extends OpMode {
 
         telemetry.addData("Target Offset", targetOffset);
 
-        if (target.getTargetArea() >= TARGET_AREA) inverseArea = 0;
+        if (target.getTargetArea() >= TARGET_AREA || Math.abs(targetOffset) >= EDGE) inverseArea = 0;
 
         if (inverseArea == 0 && rotationalPower == 0) {
              frontLeft.setVelocity(0);
@@ -172,10 +173,14 @@ public class Limelight extends OpMode {
         telemetry.addData("Inverse Area", inverseArea);
 
         telemetry.addData("Rotational Power", rotationalPower);
-        frontLeft.setVelocity((inverseArea + rotationalPower) * VELOCITY_CONSTANT);
-        frontRight.setVelocity((inverseArea - rotationalPower) * VELOCITY_CONSTANT);
-        backLeft.setVelocity((inverseArea + rotationalPower) * VELOCITY_CONSTANT);
-        backRight.setVelocity((inverseArea - rotationalPower) * VELOCITY_CONSTANT);
+        frontLeft.setVelocity(getPower(inverseArea, rotationalPower));
+        frontRight.setVelocity(getPower(inverseArea, -rotationalPower));
+        backLeft.setVelocity(getPower(inverseArea, rotationalPower));
+        backRight.setVelocity(getPower(inverseArea, -rotationalPower));
+    }
+
+    private double getPower(double inverseArea, double rotationalPower) {
+        return (inverseArea / Math.max((Math.abs(rotationalPower) * 20), 1) + rotationalPower) * VELOCITY_CONSTANT;
     }
 
     private final double _maxRotationalError = 1;
