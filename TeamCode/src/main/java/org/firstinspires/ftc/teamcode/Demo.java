@@ -20,7 +20,7 @@ import java.util.List;
 
 @TeleOp(name = "Demo")
 public class Demo extends LinearOpMode {
-    private static final double VELOCITY_CONSTANT = 750;
+    private static final double VELOCITY_CONSTANT = 400;
     private static final double TARGET_AREA = 0.55;
     private static final double ATTACK_THRESHOLD = 0.5;
     private static final double TURNING_DAMPING = 25;
@@ -117,11 +117,10 @@ public class Demo extends LinearOpMode {
                     if (state == 0) {
                         moveRobot(target);
                     }
-//                    // Attack state
-//                    else if (state == 1) {
-//
-//                        state = 2;
-//                    }
+
+                    if (state == 1) {
+                        break;
+                    }
                 }
             } else {
                 telemetry.addData("Purple Amount", "INVALID");

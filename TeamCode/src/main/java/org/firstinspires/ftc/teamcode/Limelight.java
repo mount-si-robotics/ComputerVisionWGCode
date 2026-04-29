@@ -142,7 +142,7 @@ public class Limelight extends OpMode {
             }
         } else {
             telemetry.addData("Purple Amount", "INVALID");
-            if(_targetArtifact == Artifact.PURPLE) {
+            if (_targetArtifact == Artifact.PURPLE) {
                 frontLeft.setVelocity(0);
                 frontRight.setVelocity(0);
                 backRight.setVelocity(0);
