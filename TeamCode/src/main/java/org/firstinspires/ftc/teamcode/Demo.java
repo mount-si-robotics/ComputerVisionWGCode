@@ -4,12 +4,14 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
@@ -17,11 +19,12 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import java.util.List;
 
 @TeleOp(name = "Demo")
-public class Demo extends OpMode {
-    private final double VELOCITY_CONSTANT = 750;
-    private final double TARGET_AREA = 0.65;
-    private final double TURNING_DAMPING = 25;
-    private final double EDGE = 18;
+public class Demo extends LinearOpMode {
+    private static final double VELOCITY_CONSTANT = 750;
+    private static final double TARGET_AREA = 0.55;
+    private static final double ATTACK_THRESHOLD = 0.5;
+    private static final double TURNING_DAMPING = 25;
+    private static final double EDGE = 18;
 
     enum Artifact {
         PURPLE(2),
@@ -39,12 +42,17 @@ public class Demo extends OpMode {
 
     IMU imu;
     Limelight3A limelight;
-    double tx;
 
     DcMotorEx frontLeft, frontRight, backLeft, backRight;
+    Servo attackServo;
+
+    private LLResult _purpleResult;
+    private Artifact _targetArtifact = Artifact.PURPLE;
+    private int _targetArtifactIndex = 0;
+    int state = 0;
 
     @Override
-    public void init() {
+    public void runOpMode() {
         imu = hardwareMap.get(IMU.class, "imu");
         imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(RevHubOrientationOnRobot.LogoFacingDirection.UP, RevHubOrientationOnRobot.UsbFacingDirection.RIGHT)));
 
@@ -54,6 +62,8 @@ public class Demo extends OpMode {
         backLeft  = hardwareMap.get(DcMotorEx.class,  "backLeft");
         backRight = hardwareMap.get(DcMotorEx.class,   "backRight");
         frontRight = hardwareMap.get(DcMotorEx.class, "frontRight");
+
+        attackServo = hardwareMap.get(Servo.class, "attackServo");
 
         frontLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         frontRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -70,6 +80,9 @@ public class Demo extends OpMode {
         backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+        attackServo.scaleRange(0, 1);
+        attackServo.setPosition(0.1);
+
         telemetry.setMsTransmissionInterval(11);
         limelight.pipelineSwitch(2);
 
@@ -77,78 +90,54 @@ public class Demo extends OpMode {
 
         telemetry.addData(">", "Robot Ready.  Press Play.");
         telemetry.update();
-    }
 
-//    private LLResult _latestResult;
-//    private LLResult _greenResult;
-    private LLResult _purpleResult;
-//    private Artifact targetArtifactPipeline = Artifact.PURPLE;
-    private Artifact _targetArtifact = Artifact.PURPLE;
-    private int _targetArtifactIndex = 0;
-    int state = 0;
-    @Override
-    public void loop() {
-        YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
-        limelight.updateRobotOrientation(orientation.getYaw(AngleUnit.DEGREES));
-        telemetry.addData("Robot Yaw", orientation.getYaw());
+        waitForStart();
 
-        _purpleResult = limelight.getLatestResult();
+        while (opModeIsActive() && !isStopRequested()) {
+            YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
+            limelight.updateRobotOrientation(orientation.getYaw(AngleUnit.DEGREES));
+            telemetry.addData("Robot Yaw", orientation.getYaw());
 
-//        if (_latestResult != null && _latestResult.getPipelineIndex() == targetArtifactPipeline.pipeline) {
-//            if (_latestResult.getPipelineIndex() == 2) _purpleResult = _latestResult;
-//            else _greenResult = _latestResult;
-//            targetArtifactPipeline = _latestResult.getPipelineIndex() == 2 ? Artifact.GREEN : Artifact.PURPLE;
-//            limelight.pipelineSwitch(targetArtifactPipeline.pipeline);
-//            _latestResult = null;
-//        }
+            _purpleResult = limelight.getLatestResult();
 
-        if (_purpleResult == null) {
-            telemetry.addLine("No Results");
+            if (_purpleResult == null) {
+                telemetry.addLine("No Results");
+                telemetry.update();
+                return;
+            }
+
+            if (_purpleResult.isValid()) {
+                List<LLResultTypes.ColorResult> purpleResults = _purpleResult.getColorResults();
+                int purpleAmount = purpleResults.size();
+                telemetry.addData("Purple Amount", purpleAmount);
+
+                if(_targetArtifact == Artifact.PURPLE) {
+                    LLResultTypes.ColorResult target = _purpleResult.getColorResults().get(_targetArtifactIndex);
+                    // Move state
+                    if (state == 0) {
+                        moveRobot(target);
+                    }
+//                    // Attack state
+//                    else if (state == 1) {
+//
+//                        state = 2;
+//                    }
+                }
+            } else {
+                telemetry.addData("Purple Amount", "INVALID");
+                if(_targetArtifact == Artifact.PURPLE) {
+                    frontLeft.setVelocity(0);
+                    frontRight.setVelocity(0);
+                    backRight.setVelocity(0);
+                    backLeft.setVelocity(0);
+                }
+            }
+
             telemetry.update();
-            return;
         }
-
-//        if(gamepad1.aWasPressed()) _targetArtifact = _targetArtifact == Artifact.PURPLE ? Artifact.GREEN : Artifact.PURPLE;
-//        telemetry.addData("Target Artifact", _targetArtifact);
-
-        if (_purpleResult.isValid()) {
-            List<LLResultTypes.ColorResult> purpleResults = _purpleResult.getColorResults();
-            int purpleAmount = purpleResults.size();
-            telemetry.addData("Purple Amount", purpleAmount);
-
-            if(_targetArtifact == Artifact.PURPLE) {
-                LLResultTypes.ColorResult target = _purpleResult.getColorResults().get(_targetArtifactIndex);
-                if(state == 0) moveRobot(target);
-            }
-//            probably not in the right spot
-//            else if(state == 1) {
-//                frontLeft.setPower(0.7);
-//                frontRight.setPower(0.7);
-//                backLeft.setPower(0.7);
-//                backRight.setPower(0.7);
-//                if(System.currentTimeMillis() - startTime >= 1000) {
-//                    frontLeft.setVelocity(0);
-//                    frontRight.setVelocity(0);
-//                    backLeft.setVelocity(0);
-//                    backRight.setVelocity(0);
-//                    state = 2;
-//                }
-//            }
-        } else {
-            telemetry.addData("Purple Amount", "INVALID");
-            if(_targetArtifact == Artifact.PURPLE) {
-                frontLeft.setVelocity(0);
-                frontRight.setVelocity(0);
-                backRight.setVelocity(0);
-                backLeft.setVelocity(0);
-            }
-        }
-
-        telemetry.update();
     }
 
-
-    long startTime = System.currentTimeMillis();
+    long attackStartTime = System.currentTimeMillis();
     private void moveRobot(LLResultTypes.ColorResult target) {
         double targetOffset = target.getTargetXDegrees();
         double rotationalPower = getRotationalPower(targetOffset);
@@ -173,12 +162,22 @@ public class Demo extends OpMode {
         frontRight.setVelocity(getPower(inverseArea, -rotationalPower));
         backLeft.setVelocity(getPower(inverseArea, rotationalPower));
         backRight.setVelocity(getPower(inverseArea, -rotationalPower));
-        if(target.getTargetArea() >= TARGET_AREA) {
-            startTime = System.currentTimeMillis();
+        if (target.getTargetArea() >= ATTACK_THRESHOLD) {
+            frontLeft.setVelocity(0);
+            frontRight.setVelocity(0);
+            backLeft.setVelocity(0);
+            backRight.setVelocity(0);
+            attackStartTime = System.currentTimeMillis();
+            for (int i = 0; i < 6; i++) {
+                attackServo.setPosition(0.65);
+                sleep(300);
+                attackServo.setPosition(0.765);
+                sleep(225);
+            }
+            attackServo.setPosition(0.1);
             state = 1;
         }
     }
-
     private double getPower(double inverseArea, double rotationalPower) {
         return (inverseArea / Math.max((Math.abs(rotationalPower) * 20), 1) + rotationalPower) * VELOCITY_CONSTANT;
     }
