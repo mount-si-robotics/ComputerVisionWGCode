@@ -30,7 +30,7 @@ public class EndOfYearChassis extends AtlasChassis {
         config.backRightName = "rearRight";
 
         servo1 = opMode.hardwareMap.get(Servo.class, "servoLeft");
-        servo2 = opMode.hardwareMap.get(Servo.class, "servoLeft");
+        servo2 = opMode.hardwareMap.get(Servo.class, "servoRight");
         init(config);
     }
 
