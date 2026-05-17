@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -21,17 +20,20 @@ public class EndOfYearChassis extends AtlasChassis {
     Servo servo1, servo2;
     public EndOfYearChassis(OpMode opMode) {
         super(opMode);
-        limelight = opMode.hardwareMap.get(Limelight3A.class, "limelight");
-        ChassisConfig config = new ChassisConfig();
+    }
+
+    @Override
+    public void init(ChassisConfig config) {
         config.imuParameters = new IMU.Parameters(new RevHubOrientationOnRobot(RevHubOrientationOnRobot.LogoFacingDirection.UP, RevHubOrientationOnRobot.UsbFacingDirection.RIGHT));
         config.frontLeftName = "frontLeft";
         config.frontRightName = "frontRight";
-        config.backLeftName = "rearLeft";
-        config.backRightName = "rearRight";
-
+        config.backLeftName = "backLeft";
+        config.backRightName = "backRight";
+        limelight = opMode.hardwareMap.get(Limelight3A.class, "limelight");
         servo1 = opMode.hardwareMap.get(Servo.class, "servoLeft");
         servo2 = opMode.hardwareMap.get(Servo.class, "servoRight");
-        init(config);
+        openGate();
+        super.init(config);
     }
 
     @Override

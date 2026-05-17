@@ -19,7 +19,7 @@ import java.util.List;
 @TeleOp(name = "Limelight")
 public class Limelight extends OpMode {
     private final double VELOCITY_CONSTANT = 750;
-    private final double TARGET_AREA = 0.35;
+    private final double TARGET_AREA = 0.085;
     private final double TURNING_DAMPING = 25;
     private final double EDGE = 18;
 
@@ -39,7 +39,6 @@ public class Limelight extends OpMode {
 
     IMU imu;
     Limelight3A limelight;
-    double tx;
 
     DcMotorEx frontLeft, frontRight, backLeft, backRight;
 
@@ -60,10 +59,10 @@ public class Limelight extends OpMode {
         backRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-        backRight.setDirection(DcMotorSimple.Direction.REVERSE);
-        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontLeft.setDirection(DcMotorSimple.Direction.FORWARD);
+        backLeft.setDirection(DcMotorSimple.Direction.FORWARD);
+        backRight.setDirection(DcMotorSimple.Direction.FORWARD);
+        frontRight.setDirection(DcMotorSimple.Direction.FORWARD);
 
         frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -173,10 +172,18 @@ public class Limelight extends OpMode {
         telemetry.addData("Inverse Area", inverseArea);
 
         telemetry.addData("Rotational Power", rotationalPower);
-        frontLeft.setVelocity(getPower(inverseArea, rotationalPower));
-        frontRight.setVelocity(getPower(inverseArea, -rotationalPower));
-        backLeft.setVelocity(getPower(inverseArea, rotationalPower));
-        backRight.setVelocity(getPower(inverseArea, -rotationalPower));
+        telemetry.addData("Total Power (FL)", getPower(inverseArea, rotationalPower));
+        if (!gamepad1.b) {
+            frontLeft.setVelocity(getPower(inverseArea, rotationalPower));
+            frontRight.setVelocity(getPower(inverseArea, -rotationalPower));
+            backLeft.setVelocity(getPower(inverseArea, rotationalPower));
+            backRight.setVelocity(getPower(inverseArea, -rotationalPower));
+        } else {
+            frontLeft.setVelocity(0);
+            frontRight.setVelocity(0);
+            backLeft.setVelocity(0);
+            backRight.setVelocity(0);
+        }
     }
 
     private double getPower(double inverseArea, double rotationalPower) {
@@ -192,7 +199,7 @@ public class Limelight extends OpMode {
             rotationPower = Math.max(-1.0, Math.min(-angleError / TURNING_DAMPING, 1.0));
         }
 
-        return -rotationPower;
+        return rotationPower;
     }
 
     private double getNormalizedAngle(double rawError) {
